@@ -52,12 +52,12 @@
       }
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/02_EB_test_build_web.loader.js";
+      var loaderUrl = buildUrl + "/03_EB_test_build_web.loader.js";
       var config = {
         arguments: [],
-        dataUrl: buildUrl + "/02_EB_test_build_web.data",
-        frameworkUrl: buildUrl + "/02_EB_test_build_web.framework.js",
-        codeUrl: buildUrl + "/02_EB_test_build_web.wasm",
+        dataUrl: buildUrl + "/03_EB_test_build_web.data",
+        frameworkUrl: buildUrl + "/03_EB_test_build_web.framework.js",
+        codeUrl: buildUrl + "/03_EB_test_build_web.wasm",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "Earth_Breathe",
@@ -110,11 +110,41 @@
         createUnityInstance(canvas, config, (progress) => {
           document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
               }).then((unityInstance) => {
+                window.unityInstance = unityInstance;
                 document.querySelector("#unity-loading-bar").style.display = "none";
                 document.querySelector("#unity-fullscreen-button").onclick = () => {
                   unityInstance.SetFullscreen(1);
                 };
 
+                // Unloading web content from DOM so that browser GC can run can be tricky to get right.
+                // This code snippet shows how to correctly implement a Unity content Unload mechanism to a web page.
+
+                // Unloading Unity content enables a web page to reclaim the memory used by Unity, e.g. for
+                // the purpose of later loading another Unity content instance on the _same_ web page.
+
+                // When using this functionality, take caution to carefully make sure to clear all JavaScript code,
+                // DOM element and event handler references to the old content you may have retained, or
+                // otherwise the browser's garbage collector will be unable to reclaim the old page.
+
+                // N.b. Unity content does _not_ need to be manually unloaded when the user is navigating away from
+                // the current page to another web page. The browser will take care to clear memory of old visited
+                // pages automatically. This functionality is only needed if you want to switch between loading
+                // multiple Unity builds on a single web page.
+                var quit = document.createElement("button");
+                quit.style = "margin-left: 5px; background-color: lightgray; border: none; padding: 5px; cursor: pointer";
+                quit.innerHTML = "Unload";
+                document.querySelector("#unity-build-title").appendChild(quit);
+                quit.onclick = () => {
+                  // Quit Unity application execution
+                  unityInstance.Quit().then(() => {
+                    // Remove DOM elements from the page so GC can run
+                    document.querySelector("#unity-container").remove();
+                    canvas = null;
+                    // Remover script elements from the page so GC can run
+                    script.remove();
+                    script = null;
+                  });
+                };
               }).catch((message) => {
                 alert(message);
               });
@@ -123,5 +153,40 @@
       document.body.appendChild(script);
 
     </script>
+
+    <script type="module">
+      // Import the functions you need from the SDKs you need
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+      import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-analytics.js";
+      import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-database.js";
+
+      // TODO: Add SDKs for Firebase products that you want to use
+      // https://firebase.google.com/docs/web/setup#available-libraries
+
+      // Your web app's Firebase configuration
+      // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+      const firebaseConfig = {
+        apiKey: "AIzaSyChBiD5JPAoAR3Q-N_HP8DIT8v6Bs7DSm0",
+        authDomain: "bdonenotes.firebaseapp.com",
+        databaseURL: "https://bdonenotes.firebaseio.com",
+        projectId: "bdonenotes",
+        storageBucket: "bdonenotes.firebasestorage.app",
+        messagingSenderId: "139204574769",
+        appId: "1:139204574769:web:07d43d3b11cb782b46df10",
+        measurementId: "G-SNMGR2LG3Y",
+        databaseURL: "https://bdonenotes.firebaseio.com/"
+      };
+
+      // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+
+    // Expose Firebase Database globally
+    window.firebaseDatabase = database;
+    window.firebaseRef = ref;
+    window.firebaseGet = get;
+    window.firebaseSet = set;
+    </script>
+
   </body>
 </html>
